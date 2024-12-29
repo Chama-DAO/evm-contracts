@@ -2,18 +2,85 @@
 
 pragma solidity 0.8.24;
 
-contract Contributions {
+import {Loans} from "./Loans.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+
+contract Contributions is Loans {
+    using SafeERC20 for IERC20;
+
+    error Contributions__onlyAdminCanCall();
+    error Contributions__onlyMemberCanCall();
+    error Contributions__tokenNotAllowed();
+
     struct memberContributions {
         address member;
         uint256 amount;
         uint256 timestamp;
     }
 
-    constructor(address _admin) {}
+    address private admin;
+    mapping(address => memberContributions) private contributions;
+    // mapping for allowed tokens
+    mapping(address => bool) private allowedTokens;
 
-    function addContribution() external {}
+    event AdminHasBeenChanged(address oldAdmin, address newAdmin);
+    event TokenHasBeenWhitelisted(address token);
+    event MemberHasContributed(address indexed member, uint256 amount, uint256 timestamp);
 
-    function getContributions(address _member) external returns (address, uint256) {}
+    constructor(address _admin) {
+        admin = _admin;
+    }
+
+    modifier onlyAdmin() {
+        if (msg.sender != admin) {
+            revert Contributions__onlyAdminCanCall();
+        }
+        _;
+    }
+
+    modifier onlyMember() {
+        if (msg.sender != contributions[msg.sender].member) {
+            revert Contributions__onlyMemberCanCall();
+        }
+        _;
+    }
+
+    function addContribution(uint256 _amount, address _token) external onlyMember {
+        if (!allowedTokens[_token]) {
+            revert Contributions__tokenNotAllowed();
+        }
+
+        IERC20(_token).safeTransferFrom(msg.sender, address(this), _amount);
+
+        contributions[msg.sender] = memberContributions(msg.sender, _amount, block.timestamp);
+
+        emit MemberHasContributed(msg.sender, _amount, block.timestamp);
+    }
+
+    function claimRound(uint256 _amount) external nonReentrant onlyMember {
+        // Should check whether the member has contributed and also if they are due to claim their round
+        // Should also check if the member has any penalties
+        // Then allow if all checks pass, allow them to claim their round
+        // q should we clear the member's contributions after they claim their round?
+    }
+
+    function whitelistToken(address _token) external onlyAdmin {
+        allowedTokens[_token] = true;
+
+        emit TokenHasBeenWhitelisted(_token);
+    }
+
+    function getContributions(address _member) external view returns (address, uint256) {
+        return (contributions[_member].member, contributions[_member].amount);
+    }
 
     function calculatePenalties(address _member) external {}
+
+    function changeAdmin(address _newAdmin) external onlyAdmin {
+        address oldAdmin = admin;
+        admin = _newAdmin;
+
+        emit AdminHasBeenChanged(oldAdmin, _newAdmin);
+    }
 }
