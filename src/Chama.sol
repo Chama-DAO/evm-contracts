@@ -1,5 +1,26 @@
 // SPDX-License-Identifier: MIT
 
+// Layout of contract:
+// Version
+// Imports
+// Interfaces, libraries, contracts
+// Errors
+// type declations
+// State variables
+// Events
+// Modifiers
+// Functions
+
+// Layout of Functions;
+// Constructors
+// Receive function
+// Fallback Function
+// External
+// Public
+// Internal
+// Private
+// View & Pure functions
+
 pragma solidity 0.8.24;
 
 import {Contributions} from "./Contributions.sol";
