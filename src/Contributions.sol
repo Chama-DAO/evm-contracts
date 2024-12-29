@@ -13,14 +13,14 @@ contract Contributions is Loans {
     error Contributions__onlyMemberCanCall();
     error Contributions__tokenNotAllowed();
 
-    struct memberContributions {
+    struct memberContribution {
         address member;
         uint256 amount;
         uint256 timestamp;
     }
 
     address private admin;
-    mapping(address => memberContributions) private contributions;
+    mapping(address => memberContribution[]) private contributions;
     // mapping for allowed tokens
     mapping(address => bool) private allowedTokens;
 
@@ -40,7 +40,7 @@ contract Contributions is Loans {
     }
 
     modifier onlyMember() {
-        if (msg.sender != contributions[msg.sender].member) {
+        if (contributions[msg.sender].length == 0 /*|| msg.sender != contributions[msg.sender][0].member*/ ) {
             revert Contributions__onlyMemberCanCall();
         }
         _;
@@ -53,7 +53,7 @@ contract Contributions is Loans {
 
         IERC20(_token).safeTransferFrom(msg.sender, address(this), _amount);
 
-        contributions[msg.sender] = memberContributions(msg.sender, _amount, block.timestamp);
+        contributions[msg.sender].push(memberContribution(msg.sender, _amount, block.timestamp));
 
         emit MemberHasContributed(msg.sender, _amount, block.timestamp);
     }
@@ -71,8 +71,8 @@ contract Contributions is Loans {
         emit TokenHasBeenWhitelisted(_token);
     }
 
-    function getContributions(address _member) external view returns (address, uint256) {
-        return (contributions[_member].member, contributions[_member].amount);
+    function getContributions(address _member) external view returns (memberContribution[] memory) {
+        return (contributions[_member]);
     }
 
     function calculatePenalties(address _member) external {}
