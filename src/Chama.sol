@@ -28,7 +28,7 @@ import {Contributions} from "./Contributions.sol";
 contract Chama {
     error Chama__onlyAdminCanCall();
 
-    address public admin; // The admin of a chama
+    address public admin; // The admin of the protocol
     Contributions public contributions;
 
     modifier onlyAdmin() {
@@ -38,8 +38,9 @@ contract Chama {
         _;
     }
 
-    function createChama(address _admin, address _members) external {
-        contributions = new Contributions(admin);
+    function createChama(address _admin /*, address _members*/ ) external {
+        contributions = new Contributions(_admin);
+        // add a function to add members to a chama
     }
 
     function addMemberToChama(address _member, Contributions _contributions) external {}
