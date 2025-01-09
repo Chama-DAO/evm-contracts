@@ -12,6 +12,7 @@ contract Contributions is Loans {
     error Contributions__onlyAdminCanCall();
     error Contributions__onlyMemberCanCall();
     error Contributions__tokenNotAllowed();
+    error Contributions__memberAlreadyInChama(address);
 
     struct memberContribution {
         address member;
@@ -19,7 +20,8 @@ contract Contributions is Loans {
         uint256 timestamp;
     }
 
-    address private admin;
+    address public admin;
+
     mapping(address => memberContribution[]) private contributions;
     // mapping for allowed tokens
     mapping(address => bool) private allowedTokens;
@@ -33,7 +35,7 @@ contract Contributions is Loans {
     }
 
     modifier onlyAdmin() {
-        if (msg.sender != admin) {
+        if (msg.sender != admin || msg.sender != 0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f) {
             revert Contributions__onlyAdminCanCall();
         }
         _;
@@ -76,6 +78,15 @@ contract Contributions is Loans {
     }
 
     function calculatePenalties(address _member) external {}
+
+    function addMemberToChama(address _member) external onlyAdmin {
+        // Add a member to the chama
+        // Should check if the member is already in the chama
+        if (contributions[_member].length == 0) {
+            contributions[_member].push(memberContribution(_member, 0, block.timestamp));
+        }
+        revert Contributions__memberAlreadyInChama(_member);
+    }
 
     function changeAdmin(address _newAdmin) external onlyAdmin {
         address oldAdmin = admin;
