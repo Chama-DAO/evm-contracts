@@ -35,7 +35,7 @@ contract Contributions is Loans {
     }
 
     modifier onlyAdmin() {
-        if (msg.sender != admin || msg.sender != 0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f) {
+        if (msg.sender != admin) {
             revert Contributions__onlyAdminCanCall();
         }
         _;

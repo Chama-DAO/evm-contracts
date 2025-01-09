@@ -2,8 +2,25 @@
 
 pragma solidity 0.8.24;
 
-import {Test} from "forge-std/Test.sol";
+import {Test, console} from "forge-std/Test.sol";
+import {IContributions} from "../../src/interfaces/IContributions.sol";
+import {Chama} from "src/Chama.sol";
 
 contract ChamaTest is Test {
-    function setUp() external {}
+    Chama chama;
+
+    address protocolAdmin = makeAddr("protocolAdmin");
+    address chamaAdmin = makeAddr("chamaAdmin");
+
+    function setUp() external {
+        chama = new Chama();
+    }
+
+    function testCreateChama() external {
+        address contributions = chama.createChama(chamaAdmin);
+
+        console.log("Chama admin is: ", IContributions(contributions).admin());
+
+        assertEq(IContributions(contributions).admin(), chamaAdmin);
+    }
 }
