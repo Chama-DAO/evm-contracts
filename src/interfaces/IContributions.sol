@@ -24,4 +24,7 @@ interface IContributions {
     function addMemberToChama(address member) external;
 
     function changeAdmin(address newAdmin) external;
+
+    function changeContributionToken(address _token) external;
+
 }

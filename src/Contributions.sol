@@ -9,10 +9,15 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 contract Contributions is Loans {
     using SafeERC20 for IERC20;
 
+    /*//////////////////////////////////////////////////////////////
+                                 ERRORS
+    //////////////////////////////////////////////////////////////*/
     error Contributions__onlyAdminCanCall();
     error Contributions__onlyMemberCanCall();
-    error Contributions__tokenNotAllowed();
+    error Contributions__tokenNotWhitelisted();
     error Contributions__memberAlreadyInChama(address);
+    error Contributions__zeroAmountProvided();
+    error Contributions__tokenBalanceMustBeZero();
 
     struct memberContribution {
         address member;
@@ -21,6 +26,7 @@ contract Contributions is Loans {
     }
 
     address public admin;
+    IERC20 token;
 
     mapping(address => memberContribution[]) private contributions;
     // mapping for allowed tokens
@@ -50,7 +56,7 @@ contract Contributions is Loans {
 
     function addContribution(uint256 _amount, address _token) external onlyMember {
         if (!allowedTokens[_token]) {
-            revert Contributions__tokenNotAllowed();
+            revert Contributions__tokenNotWhitelisted();
         }
 
         IERC20(_token).safeTransferFrom(msg.sender, address(this), _amount);
@@ -65,11 +71,16 @@ contract Contributions is Loans {
         // Should also check if the member has any penalties
         // Then allow if all checks pass, allow them to claim their round
         // q should we clear the member's contributions after they claim their round?
+        if(_amount == 0) {
+            revert Contributions__zeroAmountProvided();
+        }
+        IERC20(token).safeTransfer(msg.sender, _amount);
     }
 
     function whitelistToken(address _token) external onlyAdmin {
-        allowedTokens[_token] = true;
 
+        allowedTokens[_token] = true;
+        token = IERC20(_token);
         emit TokenHasBeenWhitelisted(_token);
     }
 
@@ -77,7 +88,9 @@ contract Contributions is Loans {
         return (contributions[_member]);
     }
 
-    function calculatePenalties(address _member) external {}
+    function calculatePenalties(address _member) external {
+
+    }
 
     function addMemberToChama(address _member) external onlyAdmin {
         // Add a member to the chama
@@ -93,5 +106,13 @@ contract Contributions is Loans {
         admin = _newAdmin;
 
         emit AdminHasBeenChanged(oldAdmin, _newAdmin);
+    }
+    
+    function changeContributionToken(address _token) external onlyAdmin {
+        if(token.balanceOf(address(this)) > 0){
+            revert Contributions__tokenBalanceMustBeZero();
+
+        }
+        token = IERC20(_token);
     }
 }
