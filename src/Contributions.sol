@@ -27,6 +27,7 @@ contract Contributions is Loans {
 
     address public admin;
     IERC20 token;
+    memberContribution[] public contributionsMade;
 
     mapping(address => memberContribution[]) private contributions;
     // mapping for allowed tokens
