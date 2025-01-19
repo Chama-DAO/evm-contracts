@@ -27,9 +27,12 @@ import {Contributions} from "./Contributions.sol";
 
 contract Chama {
     error Chama__onlyAdminCanCall();
+    error chama__zeroAddressProvided();
 
     address public admin; // The admin of the protocol
     Contributions public contributions;
+
+    mapping (string => address) public chamas;
 
     event chamaCreated(address indexed admin, address contributions);
 
@@ -49,15 +52,24 @@ contract Chama {
         return address(contributions);
     }
 
-    function addMemberToChama(address _member, Contributions _contributions) external {
-        _contributions.addMemberToChama(_member);
+    function addMemberToChama(address _member, address _contributions) external {
+        if(_member == address(0) || _contributions == address(0)) {
+            revert chama__zeroAddressProvided();
+        }
+        Contributions chamaAddress = Contributions(_contributions);
+        chamaAddress.addMemberToChama(_member);
     }
 
-    function getChamaDetails(string memory _name) external {
+    function getChamaDetails(string memory _name) external view returns (address){
         // get chama details
+        address chama = chamas[_name];
+        return chama;
     }
 
-    function removeMemberFromChama(address _member) external onlyAdmin {}
+    function removeMemberFromChama(address _member) external onlyAdmin {
+        // remove member from chama
+        
+    }
 
     function updateChamaMetadata(string memory _name) external onlyAdmin {}
 }
