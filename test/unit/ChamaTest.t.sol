@@ -17,7 +17,7 @@ contract ChamaTest is Test {
     }
 
     function testCreateChama() external {
-        address contributions = chama.createChama(chamaAdmin);
+        address contributions = chama.createChama(chamaAdmin, "Chama1");
 
         console.log("Chama admin is: ", IContributions(contributions).admin());
 
