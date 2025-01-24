@@ -13,29 +13,27 @@ contract Contributions is Loans {
                                  ERRORS
     //////////////////////////////////////////////////////////////*/
     error Contributions__onlyAdminCanCall();
-    error Contributions__onlyMemberCanCall();
+    error Contributions__onlyMembersCanCall();
     error Contributions__tokenNotWhitelisted();
     error Contributions__memberAlreadyInChama(address);
     error Contributions__zeroAmountProvided();
     error Contributions__tokenBalanceMustBeZero();
-
-    struct memberContribution {
-        address member;
-        uint256 amount;
-        uint256 timestamp;
-    }
+    error Contributions__amountThatCanBeWithdrawnIs(uint256);
+    error Contributions__notMemberInChama();
+    error Contributions__memeberShouldHaveZeroBalance();
 
     address public admin;
     IERC20 token;
-    memberContribution[] public contributionsMade;
-
-    mapping(address => memberContribution[]) private contributions;
+    // mapping to keep track of amount contributed by each member
+    mapping(address member => uint256 amount) private memberToAmountContributed;
+    // mapping to check if a member is in the chama
+    mapping(address caller => bool isMember) private callerToIsMember;
     // mapping for allowed tokens
     mapping(address => bool) private allowedTokens;
 
     event AdminHasBeenChanged(address oldAdmin, address newAdmin);
     event TokenHasBeenWhitelisted(address token);
-    event MemberHasContributed(address indexed member, uint256 amount, uint256 timestamp);
+    event MemberHasContributed(address indexed member, uint256 amount, uint256 indexed timestamp);
 
     constructor(address _admin) {
         admin = _admin;
@@ -49,8 +47,8 @@ contract Contributions is Loans {
     }
 
     modifier onlyMember() {
-        if (contributions[msg.sender].length == 0 /*|| msg.sender != contributions[msg.sender][0].member*/ ) {
-            revert Contributions__onlyMemberCanCall();
+        if (!callerToIsMember[msg.sender]) {
+            revert Contributions__onlyMembersCanCall();
         }
         _;
     }
@@ -59,10 +57,9 @@ contract Contributions is Loans {
         if (!allowedTokens[_token]) {
             revert Contributions__tokenNotWhitelisted();
         }
+        memberToAmountContributed[msg.sender] += _amount;
 
         IERC20(_token).safeTransferFrom(msg.sender, address(this), _amount);
-
-        contributions[msg.sender].push(memberContribution(msg.sender, _amount, block.timestamp));
 
         emit MemberHasContributed(msg.sender, _amount, block.timestamp);
     }
@@ -72,34 +69,42 @@ contract Contributions is Loans {
         // Should also check if the member has any penalties
         // Then allow if all checks pass, allow them to claim their round
         // q should we clear the member's contributions after they claim their round?
-        if(_amount == 0) {
+        if (_amount == 0) {
             revert Contributions__zeroAmountProvided();
+        }
+        uint256 totalContributedAmount = memberToAmountContributed[msg.sender];
+        if (_amount > totalContributedAmount) {
+            revert Contributions__amountThatCanBeWithdrawnIs(totalContributedAmount);
         }
         IERC20(token).safeTransfer(msg.sender, _amount);
     }
 
+    /**
+     * @notice Whitelist a token to be used for contributions
+     * @notice Contract is meant to handle only USDT for now
+     */
     function whitelistToken(address _token) external onlyAdmin {
-
         allowedTokens[_token] = true;
         token = IERC20(_token);
         emit TokenHasBeenWhitelisted(_token);
     }
 
-    function getContributions(address _member) external view returns (memberContribution[] memory) {
-        return (contributions[_member]);
+    function getContributions(address _member) external view returns (uint256) {
+        if (!callerToIsMember[_member]) {
+            revert Contributions__notMemberInChama();
+        }
+        return (memberToAmountContributed[_member]);
     }
 
-    function calculatePenalties(address _member) external {
+    function calculatePenalties(address _member) external returns (uint256) {}
 
-    }
-
-    function addMemberToChama(address _member) external onlyAdmin {
+    function addMemberToChama(address _address) external onlyAdmin {
         // Add a member to the chama
         // Should check if the member is already in the chama
-        if (contributions[_member].length == 0) {
-            contributions[_member].push(memberContribution(_member, 0, block.timestamp));
+        if (!callerToIsMember[_address]) {
+            callerToIsMember[_address] = true;
         }
-        revert Contributions__memberAlreadyInChama(_member);
+        revert Contributions__memberAlreadyInChama(_address);
     }
 
     function changeAdmin(address _newAdmin) external onlyAdmin {
@@ -108,12 +113,20 @@ contract Contributions is Loans {
 
         emit AdminHasBeenChanged(oldAdmin, _newAdmin);
     }
-    
-    function changeContributionToken(address _token) external onlyAdmin {
-        if(token.balanceOf(address(this)) > 0){
-            revert Contributions__tokenBalanceMustBeZero();
 
+    function changeContributionToken(address _token) external onlyAdmin {
+        if (token.balanceOf(address(this)) > 0) {
+            revert Contributions__tokenBalanceMustBeZero();
         }
         token = IERC20(_token);
+        emit TokenHasBeenWhitelisted(_token);
+    }
+
+    function removeMemberFromChama(address _member) external onlyAdmin {
+        // remove member from chama
+        if (callerToIsMember[_member] && memberToAmountContributed[_member] == 0) {
+            callerToIsMember[_member] = false;
+        }
+        revert Contributions__memeberShouldHaveZeroBalance();
     }
 }

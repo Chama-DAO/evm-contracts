@@ -17,14 +17,13 @@ interface IContributions {
 
     function whitelistToken(address token) external;
 
-    function getContributions(address member) external view returns (memberContribution[] memory);
+    function getContributions(address member) external view returns (uint256);
 
-    function calculatePenalties(uint256 amount) external;
+    function calculatePenalties(uint256 amount) external returns (uint256);
 
     function addMemberToChama(address member) external;
 
     function changeAdmin(address newAdmin) external;
 
     function changeContributionToken(address _token) external;
-
 }
