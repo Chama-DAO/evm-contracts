@@ -5,29 +5,29 @@ pragma solidity 0.8.24;
 import {Loans} from "./Loans.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Errors} from "./utils/Errors.sol";
+import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
-contract Contributions is Loans {
+contract Contributions is Loans, Ownable {
     using SafeERC20 for IERC20;
+    using EnumerableSet for EnumerableSet.AddressSet;
 
-    /*//////////////////////////////////////////////////////////////
-                                 ERRORS
-    //////////////////////////////////////////////////////////////*/
-    error Contributions__onlyAdminCanCall();
-    error Contributions__onlyMembersCanCall();
-    error Contributions__tokenNotWhitelisted();
-    error Contributions__memberAlreadyInChama(address);
-    error Contributions__zeroAmountProvided();
-    error Contributions__tokenBalanceMustBeZero();
-    error Contributions__amountThatCanBeWithdrawnIs(uint256);
-    error Contributions__notMemberInChama();
-    error Contributions__memeberShouldHaveZeroBalance();
+    struct member {
+        uint256 amount;
+        uint256 timestamp;
+    }
+
+    member[] public members;
 
     address public admin;
+    address public factoryContract;
     IERC20 token;
+
     // mapping to keep track of amount contributed by each member
     mapping(address member => uint256 amount) private memberToAmountContributed;
     // mapping to check if a member is in the chama
-    mapping(address caller => bool isMember) private callerToIsMember;
+    mapping(address caller => bool isMember) callerToIsMember;
     // mapping for allowed tokens
     mapping(address => bool) private allowedTokens;
 
@@ -35,31 +35,29 @@ contract Contributions is Loans {
     event TokenHasBeenWhitelisted(address token);
     event MemberHasContributed(address indexed member, uint256 amount, uint256 indexed timestamp);
 
-    constructor(address _admin) {
-        admin = _admin;
+    constructor(address _admin) Ownable(_admin) {
+        callerToIsMember[_admin] = true;
+        factoryContract = msg.sender;
     }
+    /*//////////////////////////////////////////////////////////////
+                               MODIFIERS
+    //////////////////////////////////////////////////////////////*/
 
     modifier onlyAdmin() {
-        if (msg.sender != admin) {
-            revert Contributions__onlyAdminCanCall();
-        }
+        _checkOwner();
         _;
     }
 
     modifier onlyMember() {
         if (!callerToIsMember[msg.sender]) {
-            revert Contributions__onlyMembersCanCall();
+            revert Errors.Contributions__onlyMembersCanCall();
         }
         _;
     }
 
-    function addContribution(uint256 _amount, address _token) external onlyMember {
-        if (!allowedTokens[_token]) {
-            revert Contributions__tokenNotWhitelisted();
-        }
+    function addContribution(uint256 _amount) external onlyMember {
         memberToAmountContributed[msg.sender] += _amount;
-
-        IERC20(_token).safeTransferFrom(msg.sender, address(this), _amount);
+        IERC20(token).safeTransferFrom(msg.sender, address(this), _amount);
 
         emit MemberHasContributed(msg.sender, _amount, block.timestamp);
     }
@@ -70,11 +68,11 @@ contract Contributions is Loans {
         // Then allow if all checks pass, allow them to claim their round
         // q should we clear the member's contributions after they claim their round?
         if (_amount == 0) {
-            revert Contributions__zeroAmountProvided();
+            revert Errors.Contributions__zeroAmountProvided();
         }
         uint256 totalContributedAmount = memberToAmountContributed[msg.sender];
         if (_amount > totalContributedAmount) {
-            revert Contributions__amountThatCanBeWithdrawnIs(totalContributedAmount);
+            revert Errors.Contributions__amountThatCanBeWithdrawnIs(totalContributedAmount);
         }
         IERC20(token).safeTransfer(msg.sender, _amount);
     }
@@ -91,7 +89,7 @@ contract Contributions is Loans {
 
     function getContributions(address _member) external view returns (uint256) {
         if (!callerToIsMember[_member]) {
-            revert Contributions__notMemberInChama();
+            revert Errors.Contributions__notMemberInChama();
         }
         return (memberToAmountContributed[_member]);
     }
@@ -101,10 +99,10 @@ contract Contributions is Loans {
     function addMemberToChama(address _address) external onlyAdmin {
         // Add a member to the chama
         // Should check if the member is already in the chama
-        if (!callerToIsMember[_address]) {
-            callerToIsMember[_address] = true;
+        if (callerToIsMember[_address]) {
+            revert Errors.Contributions__memberAlreadyInChama(_address);
         }
-        revert Contributions__memberAlreadyInChama(_address);
+        callerToIsMember[_address] = true;
     }
 
     function changeAdmin(address _newAdmin) external onlyAdmin {
@@ -116,7 +114,7 @@ contract Contributions is Loans {
 
     function changeContributionToken(address _token) external onlyAdmin {
         if (token.balanceOf(address(this)) > 0) {
-            revert Contributions__tokenBalanceMustBeZero();
+            revert Errors.Contributions__tokenBalanceMustBeZero();
         }
         token = IERC20(_token);
         emit TokenHasBeenWhitelisted(_token);
@@ -125,8 +123,17 @@ contract Contributions is Loans {
     function removeMemberFromChama(address _member) external onlyAdmin {
         // remove member from chama
         if (callerToIsMember[_member] && memberToAmountContributed[_member] == 0) {
-            callerToIsMember[_member] = false;
+            delete callerToIsMember[_member];
         }
-        revert Contributions__memeberShouldHaveZeroBalance();
+        revert Errors.Contributions__memeberShouldHaveZeroBalance();
+    }
+    /*//////////////////////////////////////////////////////////////
+                           INTERNAL FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
+
+    function _checkOwner() internal view override {
+        if (owner() != _msgSender() && _msgSender() != factoryContract) {
+            revert Errors.Ownable__OwnableUnauthorizedAccount(_msgSender());
+        }
     }
 }
