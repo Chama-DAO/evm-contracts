@@ -19,7 +19,6 @@ library Errors {
                              CONTRIBUTIONS
     //////////////////////////////////////////////////////////////*/
     error Contributions__onlyMembersCanCall();
-    error Contributions__tokenNotWhitelisted();
     error Contributions__memberAlreadyInChama(address);
     error Contributions__zeroAmountProvided();
     error Contributions__tokenBalanceMustBeZero();

@@ -8,19 +8,15 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Errors} from "./utils/Errors.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import {IContributions} from "./interfaces/IContributions.sol";
 
-contract Contributions is Loans, Ownable {
+contract Contributions is Loans, Ownable, IContributions {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
 
-    struct member {
-        uint256 amount;
-        uint256 timestamp;
-    }
+    Member[] public members;
 
-    member[] public members;
-
-    address public admin;
+    address private admin;
     address public factoryContract;
     IERC20 token;
 
@@ -55,7 +51,7 @@ contract Contributions is Loans, Ownable {
         _;
     }
 
-    function addContribution(uint256 _amount) external onlyMember {
+    function addContribution(uint256 _amount) external override onlyMember {
         memberToAmountContributed[msg.sender] += _amount;
         IERC20(token).safeTransferFrom(msg.sender, address(this), _amount);
 
@@ -81,12 +77,6 @@ contract Contributions is Loans, Ownable {
      * @notice Whitelist a token to be used for contributions
      * @notice Contract is meant to handle only USDT for now
      */
-    function whitelistToken(address _token) external onlyAdmin {
-        allowedTokens[_token] = true;
-        token = IERC20(_token);
-        emit TokenHasBeenWhitelisted(_token);
-    }
-
     function getContributions(address _member) external view returns (uint256) {
         if (!callerToIsMember[_member]) {
             revert Errors.Contributions__notMemberInChama();
@@ -102,6 +92,8 @@ contract Contributions is Loans, Ownable {
         if (callerToIsMember[_address]) {
             revert Errors.Contributions__memberAlreadyInChama(_address);
         }
+        Member memory newMember = Member(_address, 0, block.timestamp);
+        members.push(newMember);
         callerToIsMember[_address] = true;
     }
 
@@ -135,5 +127,13 @@ contract Contributions is Loans, Ownable {
         if (owner() != _msgSender() && _msgSender() != factoryContract) {
             revert Errors.Ownable__OwnableUnauthorizedAccount(_msgSender());
         }
+    }
+
+    function getMembers() external view override returns (Member[] memory) {
+        return members;
+    }
+
+    function getAdmin() external view returns (address) {
+        return admin;
     }
 }

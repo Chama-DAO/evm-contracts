@@ -3,29 +3,26 @@
 pragma solidity 0.8.24;
 
 interface IContributions {
-    struct memberContribution {
+    struct Member {
         address member;
         uint256 amount;
         uint256 timestamp;
     }
 
-    function callerToIsMember(address) external view returns (bool);
-
-    function admin() external view returns (address);
-
-    function addContribution(uint256 _amount, address token) external;
+    function addContribution(uint256 _amount) external;
 
     function claimRound(uint256 amount) external;
 
-    function whitelistToken(address token) external;
-
     function getContributions(address member) external view returns (uint256);
 
-    function calculatePenalties(uint256 amount) external returns (uint256);
+    function calculatePenalties(address) external returns (uint256);
 
     function addMemberToChama(address member) external;
 
     function changeAdmin(address newAdmin) external;
 
     function changeContributionToken(address _token) external;
+    function getMembers() external view returns (Member[] memory);
+
+    function getAdmin() external view returns (address);
 }
