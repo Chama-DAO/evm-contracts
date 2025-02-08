@@ -29,6 +29,6 @@ contract ContributionsTest is Test {
     function testNonMembersCannotContribute() external {
         vm.prank(attacker);
         vm.expectRevert();
-        contributions.addContribution(1, address(usdt));
+        contributions.addContribution(1);
     }
 }
