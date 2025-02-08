@@ -9,6 +9,8 @@ interface IContributions {
         uint256 timestamp;
     }
 
+    function callerToIsMember(address) external view returns (bool);
+
     function admin() external view returns (address);
 
     function addContribution(uint256 _amount, address token) external;

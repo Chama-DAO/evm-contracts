@@ -11,16 +11,32 @@ contract ChamaTest is Test {
 
     address protocolAdmin = makeAddr("protocolAdmin");
     address chamaAdmin = makeAddr("chamaAdmin");
+    address contributions;
 
     function setUp() external {
         chama = new Chama();
+        contributions = chama.createChama(chamaAdmin, "Chama1");
     }
 
     function testCreateChama() external {
-        address contributions = chama.createChama(chamaAdmin, "Chama1");
+        address _contributions = chama.createChama(chamaAdmin, "Chama1");
 
-        console.log("Chama admin is: ", IContributions(contributions).admin());
+        console.log("Chama admin is: ", IContributions(_contributions).admin());
 
-        assertEq(IContributions(contributions).admin(), chamaAdmin);
+        assertEq(IContributions(_contributions).admin(), chamaAdmin);
+    }
+
+    function testAddMembersToChama() external {
+        address[] memory members = new address[](3);
+        members[0] = makeAddr("member1");
+        members[1] = makeAddr("member2");
+        members[2] = makeAddr("member3");
+        vm.startPrank(chamaAdmin);
+        for (uint256 i = 0; i <= 2; i++) {
+            chama.addMemberToChama(members[i], "Chama1");
+        }
+        vm.stopPrank();
+        address _contributions = chama.getChamaAddress("Chama1");
+        assertEq(IContributions(_contributions).callerToIsMember(members[0]), true);
     }
 }
