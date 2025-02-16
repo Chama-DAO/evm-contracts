@@ -26,13 +26,16 @@ pragma solidity 0.8.24;
 import {Contributions} from "./Contributions.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Errors} from "./utils/Errors.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract Chama is Ownable {
     address public factoryAdmin; // The admin of the protocol
     Contributions public contributions;
+    IERC20 defaultToken; // This is meant to be usdt/usdc to be decided later
 
     mapping(string => address) private chamas;
-    mapping(string chamaName => mapping(address chamaAddress => address chamaAdmin)) public chamaAdmin;
+    mapping(string chamaName => mapping(address chamaAddress => address chamaAdmin))
+        public chamaAdmin;
 
     event chamaCreated(address indexed admin, address contributions);
 
@@ -46,14 +49,20 @@ contract Chama is Ownable {
     }
 
     modifier onlyChamaAdmin(string memory _name) {
-        if (msg.sender != chamaAdmin[_name][address(contributions)] && msg.sender != factoryAdmin) {
+        if (
+            msg.sender != chamaAdmin[_name][address(contributions)] &&
+            msg.sender != factoryAdmin
+        ) {
             revert Errors.Chama__onlyChamaAdminCanCall();
         }
         _;
     }
 
-    function createChama(address _admin, string memory _name) external returns (address) {
-        contributions = new Contributions(_admin);
+    function createChama(
+        address _admin,
+        string memory _name
+    ) external returns (address) {
+        contributions = new Contributions(_admin, address(defaultToken));
         chamas[_name] = address(contributions);
         chamaAdmin[_name][address(contributions)] = _admin;
 
@@ -63,7 +72,10 @@ contract Chama is Ownable {
         return address(contributions);
     }
 
-    function addMemberToChama(address _member, string memory _name) external onlyChamaAdmin(_name) {
+    function addMemberToChama(
+        address _member,
+        string memory _name
+    ) external onlyChamaAdmin(_name) {
         if (_member == address(0)) {
             revert Errors.chama__zeroAddressProvided();
         }
@@ -71,7 +83,9 @@ contract Chama is Ownable {
         chamaAddress.addMemberToChama(_member);
     }
 
-    function getChamaAddress(string memory _name) external view returns (address) {
+    function getChamaAddress(
+        string memory _name
+    ) external view returns (address) {
         // get chama details
         address chama = chamas[_name];
         return chama;

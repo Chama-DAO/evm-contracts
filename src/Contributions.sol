@@ -16,7 +16,6 @@ contract Contributions is Loans, Ownable, IContributions {
 
     Member[] public members;
 
-    address private admin;
     address public factoryContract;
     IERC20 token;
 
@@ -27,14 +26,20 @@ contract Contributions is Loans, Ownable, IContributions {
     // mapping for allowed tokens
     mapping(address => bool) private allowedTokens;
 
-    event AdminHasBeenChanged(address oldAdmin, address newAdmin);
     event TokenHasBeenWhitelisted(address token);
-    event MemberHasContributed(address indexed member, uint256 amount, uint256 indexed timestamp);
+    event MemberHasContributed(
+        address indexed member,
+        uint256 amount,
+        uint256 indexed timestamp
+    );
+    event memberRemovedFromChama(address member);
 
-    constructor(address _admin) Ownable(_admin) {
+    constructor(address _admin, address _token) Ownable(_admin) {
         callerToIsMember[_admin] = true;
         factoryContract = msg.sender;
+        token = IERC20(_token);
     }
+
     /*//////////////////////////////////////////////////////////////
                                MODIFIERS
     //////////////////////////////////////////////////////////////*/
@@ -46,7 +51,7 @@ contract Contributions is Loans, Ownable, IContributions {
 
     modifier onlyMember() {
         if (!callerToIsMember[msg.sender]) {
-            revert Errors.Contributions__onlyMembersCanCall();
+            revert Errors.Contributions__onlyMembersCanCall(msg.sender);
         }
         _;
     }
@@ -68,7 +73,9 @@ contract Contributions is Loans, Ownable, IContributions {
         }
         uint256 totalContributedAmount = memberToAmountContributed[msg.sender];
         if (_amount > totalContributedAmount) {
-            revert Errors.Contributions__amountThatCanBeWithdrawnIs(totalContributedAmount);
+            revert Errors.Contributions__amountThatCanBeWithdrawnIs(
+                totalContributedAmount
+            );
         }
         IERC20(token).safeTransfer(msg.sender, _amount);
     }
@@ -97,14 +104,14 @@ contract Contributions is Loans, Ownable, IContributions {
         callerToIsMember[_address] = true;
     }
 
-    function changeAdmin(address _newAdmin) external onlyAdmin {
-        address oldAdmin = admin;
-        admin = _newAdmin;
-
-        emit AdminHasBeenChanged(oldAdmin, _newAdmin);
+    function changeAdmin(address _newAdmin) external {
+        _transferOwnership(_newAdmin);
     }
 
     function changeContributionToken(address _token) external onlyAdmin {
+        if (_token == address(0)) {
+            revert Errors.Contributions__zeroAddressProvided();
+        }
         if (token.balanceOf(address(this)) > 0) {
             revert Errors.Contributions__tokenBalanceMustBeZero();
         }
@@ -113,12 +120,29 @@ contract Contributions is Loans, Ownable, IContributions {
     }
 
     function removeMemberFromChama(address _member) external onlyAdmin {
-        // remove member from chama
-        if (callerToIsMember[_member] && memberToAmountContributed[_member] == 0) {
-            delete callerToIsMember[_member];
+        // Check if _member is a member of the chama
+        if (!callerToIsMember[_member]) {
+            revert Errors.Contributions__notMemberInChama();
         }
-        revert Errors.Contributions__memeberShouldHaveZeroBalance();
+        // remove member from chama
+        uint256 memberBalance = memberToAmountContributed[_member];
+        if (memberBalance != 0) {
+            revert Errors.Contributions__memberShouldHaveZeroBalance(
+                memberBalance
+            );
+        }
+        for (uint256 i = 0; i < members.length; i++) {
+            if (members[i].member == _member) {
+                members[i] = members[members.length - 1];
+                members.pop();
+                break;
+            }
+        }
+        delete callerToIsMember[_member];
+
+        emit memberRemovedFromChama(_member);
     }
+
     /*//////////////////////////////////////////////////////////////
                            INTERNAL FUNCTIONS
     //////////////////////////////////////////////////////////////*/
@@ -129,11 +153,19 @@ contract Contributions is Loans, Ownable, IContributions {
         }
     }
 
+    /*//////////////////////////////////////////////////////////////
+                            GETTER FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
+
     function getMembers() external view override returns (Member[] memory) {
         return members;
     }
 
     function getAdmin() external view returns (address) {
-        return admin;
+        return owner();
+    }
+
+    function getContributionToken() external view returns (address) {
+        return address(token);
     }
 }
