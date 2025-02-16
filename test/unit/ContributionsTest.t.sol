@@ -42,12 +42,7 @@ contract ContributionsTest is Test {
 
     function testNonMembersCannotContribute() external {
         vm.prank(attacker);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                Errors.Contributions__onlyMembersCanCall.selector,
-                attacker
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(Errors.Contributions__onlyMembersCanCall.selector, attacker));
         contributions.addContribution(1);
     }
 
@@ -69,12 +64,7 @@ contract ContributionsTest is Test {
 
     function testOnlyAdminCanChangeToken() external {
         vm.prank(member1);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                Errors.Ownable__OwnableUnauthorizedAccount.selector,
-                member1
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(Errors.Ownable__OwnableUnauthorizedAccount.selector, member1));
         contributions.changeContributionToken(address(usdt));
     }
 
@@ -97,20 +87,12 @@ contract ContributionsTest is Test {
         Usdt otherToken = new Usdt();
         vm.prank(admin);
         contributions.changeContributionToken(address(otherToken));
-        assertEq(
-            address(otherToken),
-            address(contributions.getContributionToken())
-        );
+        assertEq(address(otherToken), address(contributions.getContributionToken()));
     }
 
     function testUsersCannotRemoveMemberFromChama() external {
         vm.prank(member1);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                Errors.Ownable__OwnableUnauthorizedAccount.selector,
-                member1
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(Errors.Ownable__OwnableUnauthorizedAccount.selector, member1));
         contributions.removeMemberFromChama(member1);
     }
 
@@ -119,12 +101,7 @@ contract ContributionsTest is Test {
         contributions.addContribution(10);
         vm.stopPrank();
         vm.prank(admin);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                Errors.Contributions__memberShouldHaveZeroBalance.selector,
-                10
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(Errors.Contributions__memberShouldHaveZeroBalance.selector, 10));
         contributions.removeMemberFromChama(member1);
     }
 

@@ -27,11 +27,7 @@ contract Contributions is Loans, Ownable, IContributions {
     mapping(address => bool) private allowedTokens;
 
     event TokenHasBeenWhitelisted(address token);
-    event MemberHasContributed(
-        address indexed member,
-        uint256 amount,
-        uint256 indexed timestamp
-    );
+    event MemberHasContributed(address indexed member, uint256 amount, uint256 indexed timestamp);
     event memberRemovedFromChama(address member);
 
     constructor(address _admin, address _token) Ownable(_admin) {
@@ -73,9 +69,7 @@ contract Contributions is Loans, Ownable, IContributions {
         }
         uint256 totalContributedAmount = memberToAmountContributed[msg.sender];
         if (_amount > totalContributedAmount) {
-            revert Errors.Contributions__amountThatCanBeWithdrawnIs(
-                totalContributedAmount
-            );
+            revert Errors.Contributions__amountThatCanBeWithdrawnIs(totalContributedAmount);
         }
         IERC20(token).safeTransfer(msg.sender, _amount);
     }
@@ -127,9 +121,7 @@ contract Contributions is Loans, Ownable, IContributions {
         // remove member from chama
         uint256 memberBalance = memberToAmountContributed[_member];
         if (memberBalance != 0) {
-            revert Errors.Contributions__memberShouldHaveZeroBalance(
-                memberBalance
-            );
+            revert Errors.Contributions__memberShouldHaveZeroBalance(memberBalance);
         }
         for (uint256 i = 0; i < members.length; i++) {
             if (members[i].member == _member) {
