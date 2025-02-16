@@ -19,9 +19,13 @@ contract ChamaTest is Test {
     }
 
     function testCreateChama() external {
+        vm.prank(chamaAdmin);
         address _contributions = chama.createChama(chamaAdmin, "Chama1");
 
-        console.log("Chama admin is: ", IContributions(_contributions).getAdmin());
+        console.log(
+            "Chama admin is: ",
+            IContributions(_contributions).getAdmin()
+        );
 
         assertEq(IContributions(_contributions).getAdmin(), chamaAdmin);
     }
@@ -37,7 +41,9 @@ contract ChamaTest is Test {
         }
         vm.stopPrank();
         address _contributions = chama.getChamaAddress("Chama1");
-        IContributions.Member[] memory membersList = IContributions(_contributions).getMembers();
+        IContributions.Member[] memory membersList = IContributions(
+            _contributions
+        ).getMembers();
         assertEq(membersList.length, 3);
     }
 }

@@ -18,11 +18,12 @@ library Errors {
     /*//////////////////////////////////////////////////////////////
                              CONTRIBUTIONS
     //////////////////////////////////////////////////////////////*/
-    error Contributions__onlyMembersCanCall();
+    error Contributions__onlyMembersCanCall(address);
     error Contributions__memberAlreadyInChama(address);
     error Contributions__zeroAmountProvided();
     error Contributions__tokenBalanceMustBeZero();
     error Contributions__amountThatCanBeWithdrawnIs(uint256);
     error Contributions__notMemberInChama();
-    error Contributions__memeberShouldHaveZeroBalance();
+    error Contributions__memberShouldHaveZeroBalance(uint256);
+    error Contributions__zeroAddressProvided();
 }
