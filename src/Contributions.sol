@@ -11,12 +11,9 @@ import {IContributions} from "./interfaces/IContributions.sol";
 import {Loans} from "./Loans.sol";
 import {Errors} from "./utils/Errors.sol";
 
-
-
 contract Contributions is Loans, Ownable, IContributions, AccessControl {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
-
 
     address public factoryContract;
     address private chamaAdmin;
@@ -30,7 +27,6 @@ contract Contributions is Loans, Ownable, IContributions, AccessControl {
     mapping(address member => uint256 amount) private memberToAmountContributed;
     mapping(address member => Member) private memberData;
     mapping(address => bool) private allowedTokens;
-
 
     event TokenHasBeenWhitelisted(address token);
     event MemberHasContributed(address indexed member, uint256 amount, uint256 indexed timestamp);
@@ -46,10 +42,7 @@ contract Contributions is Loans, Ownable, IContributions, AccessControl {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(CHAMA_ADMIN_ROLE, msg.sender);
         grantChamaAdminRole(_admin);
-
     }
-
-
 
     /*//////////////////////////////////////////////////////////////
                                MODIFIERS
@@ -59,13 +52,13 @@ contract Contributions is Loans, Ownable, IContributions, AccessControl {
         _checkOwner();
         _;
     }
+
     modifier onlyChamaFactory() {
-        if(msg.sender != factoryContract){
+        if (msg.sender != factoryContract) {
             revert Errors.Contributions__notFactoryContract();
         }
         _;
     }
-   
 
     function addContribution(uint256 _amount) external override onlyRole(MEMBER_ROLE) {
         memberToAmountContributed[msg.sender] += _amount;
@@ -109,7 +102,6 @@ contract Contributions is Loans, Ownable, IContributions, AccessControl {
         Member memory newMember = Member(_address, 0, block.timestamp);
         memberData[_address] = newMember;
         grantMemberRole(_address);
-       
     }
 
     function changeAdmin(address _newAdmin) external {
@@ -162,10 +154,11 @@ contract Contributions is Loans, Ownable, IContributions, AccessControl {
             revert Errors.Ownable__OwnableUnauthorizedAccount(_msgSender());
         }
     }
+
     function grantChamaAdminRole(address _admin) internal {
         _grantRole(CHAMA_ADMIN_ROLE, _admin);
-        
     }
+
     function grantMemberRole(address _member) public onlyRole(CHAMA_ADMIN_ROLE) {
         _grantRole(MEMBER_ROLE, _member);
     }
@@ -185,7 +178,8 @@ contract Contributions is Loans, Ownable, IContributions, AccessControl {
     function getContributionToken() external view returns (address) {
         return address(token);
     }
-    function getMemberContributions(address _address) external view returns(Member memory) {
+
+    function getMemberContributions(address _address) external view returns (Member memory) {
         return memberData[_address];
     }
 }

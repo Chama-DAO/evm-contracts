@@ -65,7 +65,11 @@ contract ContributionsTest is Test {
 
     function testOnlyAdminCanChangeToken() external {
         vm.prank(member1);
-        vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, member1, keccak256("CHAMA_ADMIN_ROLE")));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector, member1, keccak256("CHAMA_ADMIN_ROLE")
+            )
+        );
         contributions.changeContributionToken(address(usdt));
     }
 
