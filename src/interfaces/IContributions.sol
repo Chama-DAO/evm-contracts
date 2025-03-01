@@ -22,7 +22,8 @@ interface IContributions {
     function changeAdmin(address newAdmin) external;
 
     function changeContributionToken(address _token) external;
-    function getMembers() external view returns (Member[] memory);
+    
+    function getMembers() external view returns (address[] memory);
 
     function getAdmin() external view returns (address);
 }

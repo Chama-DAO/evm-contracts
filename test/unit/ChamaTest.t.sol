@@ -38,7 +38,8 @@ contract ChamaTest is Test {
         }
         vm.stopPrank();
         address _contributions = chama.getChamaAddress("Chama1");
-        IContributions.Member[] memory membersList = IContributions(_contributions).getMembers();
-        assertEq(membersList.length, 3);
+        address[] memory membersList = IContributions(_contributions).getMembers();
+        // Members will be 4 because of chama admin
+        assertEq(membersList.length, 4);
     }
 }

@@ -6,6 +6,7 @@ import {Test} from "forge-std/Test.sol";
 import {Contributions} from "src/Contributions.sol";
 import {Usdt} from "test/mocks/Usdt.sol";
 import {Errors} from "src/utils/Errors.sol";
+import {IAccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 
 contract ContributionsTest is Test {
     Contributions contributions;
@@ -42,7 +43,7 @@ contract ContributionsTest is Test {
 
     function testNonMembersCannotContribute() external {
         vm.prank(attacker);
-        vm.expectRevert(abi.encodeWithSelector(Errors.Contributions__onlyMembersCanCall.selector, attacker));
+        vm.expectPartialRevert(IAccessControl.AccessControlUnauthorizedAccount.selector);
         contributions.addContribution(1);
     }
 
@@ -64,7 +65,7 @@ contract ContributionsTest is Test {
 
     function testOnlyAdminCanChangeToken() external {
         vm.prank(member1);
-        vm.expectRevert(abi.encodeWithSelector(Errors.Ownable__OwnableUnauthorizedAccount.selector, member1));
+        vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, member1, keccak256("CHAMA_ADMIN_ROLE")));
         contributions.changeContributionToken(address(usdt));
     }
 
@@ -92,7 +93,7 @@ contract ContributionsTest is Test {
 
     function testUsersCannotRemoveMemberFromChama() external {
         vm.prank(member1);
-        vm.expectRevert(abi.encodeWithSelector(Errors.Ownable__OwnableUnauthorizedAccount.selector, member1));
+        vm.expectPartialRevert(IAccessControl.AccessControlUnauthorizedAccount.selector);
         contributions.removeMemberFromChama(member1);
     }
 
@@ -108,7 +109,7 @@ contract ContributionsTest is Test {
     function testMembersCanBeRemoved() external {
         vm.prank(admin);
         contributions.removeMemberFromChama(member1);
-        assertEq(contributions.getMembers().length, 2);
+        assertEq(contributions.getMembers().length, 3);
     }
 
     function testBurn() external {
