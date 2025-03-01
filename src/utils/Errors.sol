@@ -26,4 +26,5 @@ library Errors {
     error Contributions__notMemberInChama();
     error Contributions__memberShouldHaveZeroBalance(uint256);
     error Contributions__zeroAddressProvided();
+    error Contributions__notFactoryContract();
 }

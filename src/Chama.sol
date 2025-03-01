@@ -30,7 +30,6 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract Chama is Ownable {
     address public factoryAdmin; // The admin of the protocol
-    Contributions public contributions;
     IERC20 defaultToken; // This is meant to be usdt/usdc to be decided later
 
     mapping(string => address) private chamas;
@@ -48,17 +47,23 @@ contract Chama is Ownable {
     }
 
     modifier onlyChamaAdmin(string memory _name) {
-        if (msg.sender != chamaAdmin[_name][address(contributions)] && msg.sender != factoryAdmin) {
+        address _contributions = chamas[_name];
+        if (msg.sender != chamaAdmin[_name][_contributions] && msg.sender != factoryAdmin) {
             revert Errors.Chama__onlyChamaAdminCanCall();
         }
         _;
     }
-
+    /**
+     * This function is for creating a chama
+     * @param _admin admin for the chama being created
+     * @param _name name of the new chama
+     */
     function createChama(address _admin, string memory _name) external returns (address) {
-        contributions = new Contributions(_admin, address(defaultToken));
+        Contributions contributions = new Contributions(_admin, address(defaultToken));
+        // Effects
         chamas[_name] = address(contributions);
         chamaAdmin[_name][address(contributions)] = _admin;
-
+        // Interactions
         // add a function to add members to a chama
 
         emit chamaCreated(_admin, address(contributions));
