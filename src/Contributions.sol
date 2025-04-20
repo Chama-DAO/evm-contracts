@@ -2,29 +2,22 @@
 
 pragma solidity 0.8.24;
 
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import {IContributions} from "./interfaces/IContributions.sol";
 import {Loans} from "./Loans.sol";
 import {Errors} from "./utils/Errors.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-contract Contributions is Loans, Ownable, IContributions, AccessControl {
-    using SafeERC20 for IERC20;
+contract Contributions is Loans, Ownable, IContributions {
     using EnumerableSet for EnumerableSet.AddressSet;
+    using SafeERC20 for IERC20;
 
     address public factoryContract;
     address private chamaAdmin;
-    IERC20 token;
     EnumerableSet.AddressSet private members;
 
-    // Access Control Roles
-    bytes32 private constant MEMBER_ROLE = 0x829b824e2329e205435d941c9f13baf578548505283d29261236d8e6596d4636;
-    bytes32 private constant CHAMA_ADMIN_ROLE = 0xbb46d0af9106a86e3cb61ab45bd36f61bb3b468e4db75bf9d14199a518ba3f9a;
-
-    mapping(address member => uint256 amount) private memberToAmountContributed;
     mapping(address member => Member) private memberData;
     mapping(address => bool) private allowedTokens;
 
@@ -32,13 +25,15 @@ contract Contributions is Loans, Ownable, IContributions, AccessControl {
     event MemberHasContributed(address indexed member, uint256 amount, uint256 indexed timestamp);
     event memberRemovedFromChama(address member);
 
-    constructor(address _admin, address _token) Ownable(msg.sender) {
+    constructor(address _admin, address _token, uint256 _interestRate)
+        Ownable(msg.sender)
+        Loans(_token, _interestRate)
+    {
         members.add(_admin);
         Member memory newMember = Member(_admin, 0, block.timestamp);
         memberData[_admin] = newMember;
         factoryContract = msg.sender;
         chamaAdmin = _admin;
-        token = IERC20(_token);
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(CHAMA_ADMIN_ROLE, msg.sender);
         grantChamaAdminRole(_admin);
@@ -62,7 +57,7 @@ contract Contributions is Loans, Ownable, IContributions, AccessControl {
 
     function addContribution(uint256 _amount) external override onlyRole(MEMBER_ROLE) {
         memberToAmountContributed[msg.sender] += _amount;
-        IERC20(token).safeTransferFrom(msg.sender, address(this), _amount);
+        token.safeTransferFrom(msg.sender, address(this), _amount);
 
         emit MemberHasContributed(msg.sender, _amount, block.timestamp);
     }
@@ -76,10 +71,12 @@ contract Contributions is Loans, Ownable, IContributions, AccessControl {
             revert Errors.Contributions__zeroAmountProvided();
         }
         uint256 totalContributedAmount = memberToAmountContributed[msg.sender];
-        if (_amount > totalContributedAmount) {
-            revert Errors.Contributions__amountThatCanBeWithdrawnIs(totalContributedAmount);
+        uint256 availableAmt = totalContributedAmount - contrAmtFrozen[msg.sender];
+
+        if (_amount > availableAmt) {
+            revert Errors.Contributions__amountNotAvailable(availableAmt);
         }
-        IERC20(token).safeTransfer(msg.sender, _amount);
+        token.safeTransfer(msg.sender, _amount);
     }
 
     /**

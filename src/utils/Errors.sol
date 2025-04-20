@@ -4,6 +4,13 @@ pragma solidity ^0.8.24;
 
 library Errors {
     /*//////////////////////////////////////////////////////////////
+                                 LOANS
+    //////////////////////////////////////////////////////////////*/
+    error Loans_invalidInterestRate(uint256 maxInterestRate, uint256 currentInterestRate);
+    error Loans__contrAmtLessLoanAmt(uint256 contrAmt, uint256 loanAmt);
+    error Loans__loanAmtGreaterThanGuaranteedAmt(uint256 loanAmt, uint256 guaranteedAmt);
+
+    /*//////////////////////////////////////////////////////////////
                                  CHAMA
     //////////////////////////////////////////////////////////////*/
     error Chama__onlyFactoryAdminCanCall();
@@ -22,7 +29,7 @@ library Errors {
     error Contributions__memberAlreadyInChama(address);
     error Contributions__zeroAmountProvided();
     error Contributions__tokenBalanceMustBeZero();
-    error Contributions__amountThatCanBeWithdrawnIs(uint256);
+    error Contributions__amountNotAvailable(uint256);
     error Contributions__notMemberInChama();
     error Contributions__memberShouldHaveZeroBalance(uint256);
     error Contributions__zeroAddressProvided();
