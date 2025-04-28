@@ -5,7 +5,7 @@
 // Imports
 // Interfaces, libraries, contracts
 // Errors
-// type declations
+// type declarations
 // State variables
 // Events
 // Modifiers
@@ -30,7 +30,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract Chama is Ownable {
     address public factoryAdmin; // The admin of the protocol
-    IERC20 defaultToken; // This is meant to be usdt/usdc to be decided later
+    IERC20 public defaultToken; // This is meant to be usdt/usdc to be decided later
 
     mapping(string => address) private chamas;
     mapping(string chamaName => mapping(address chamaAddress => address chamaAdmin)) public chamaAdmin;
