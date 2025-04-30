@@ -16,6 +16,8 @@ contract Contributions is Loans, Ownable, IContributions {
 
     address public factoryContract;
     address private chamaAdmin;
+    uint256 public epochPeriod = 30 days;
+    uint256 public epochEndTime;
     EnumerableSet.AddressSet private members;
 
     mapping(address member => Member) private memberData;
@@ -35,6 +37,7 @@ contract Contributions is Loans, Ownable, IContributions {
         factoryContract = msg.sender;
         chamaAdmin = _admin;
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _setRoleAdmin(MEMBER_ROLE, CHAMA_ADMIN_ROLE);
         _grantRole(CHAMA_ADMIN_ROLE, msg.sender);
         grantChamaAdminRole(_admin);
     }
@@ -70,12 +73,17 @@ contract Contributions is Loans, Ownable, IContributions {
         if (_amount == 0) {
             revert Errors.Contributions__zeroAmountProvided();
         }
+        if (block.timestamp < epochEndTime) {
+            revert Errors.Contributions__epochNotOver();
+        }
+
         uint256 totalContributedAmount = memberToAmountContributed[msg.sender];
         uint256 availableAmt = totalContributedAmount - contrAmtFrozen[msg.sender];
 
         if (_amount > availableAmt) {
             revert Errors.Contributions__amountNotAvailable(availableAmt);
         }
+        totalContributedAmount -= _amount;
         token.safeTransfer(msg.sender, _amount);
     }
 
@@ -83,11 +91,11 @@ contract Contributions is Loans, Ownable, IContributions {
      * @notice Whitelist a token to be used for contributions
      * @notice Contract is meant to handle only USDT for now
      */
-    function getContributions(address _member) external view returns (uint256) {
-        return (memberToAmountContributed[_member]);
-    }
-
     function calculatePenalties(address _member) external returns (uint256) {}
+
+    /*//////////////////////////////////////////////////////////////
+                              ADMIN ROLES
+    //////////////////////////////////////////////////////////////*/
 
     function addMemberToChama(address _address) external onlyRole(CHAMA_ADMIN_ROLE) {
         // Add a member to the chama
@@ -98,7 +106,6 @@ contract Contributions is Loans, Ownable, IContributions {
         members.add(_address);
         Member memory newMember = Member(_address, 0, block.timestamp);
         memberData[_address] = newMember;
-        grantMemberRole(_address);
     }
 
     function changeAdmin(address _newAdmin) external {
@@ -116,6 +123,10 @@ contract Contributions is Loans, Ownable, IContributions {
         }
         token = IERC20(_token);
         emit TokenHasBeenWhitelisted(_token);
+    }
+
+    function setEpochPeriod(uint256 _epochPeriod) external onlyRole(CHAMA_ADMIN_ROLE) {
+        epochPeriod = _epochPeriod;
     }
 
     function removeMemberFromChama(address _member) external onlyRole(CHAMA_ADMIN_ROLE) {
@@ -156,10 +167,6 @@ contract Contributions is Loans, Ownable, IContributions {
         _grantRole(CHAMA_ADMIN_ROLE, _admin);
     }
 
-    function grantMemberRole(address _member) public onlyRole(CHAMA_ADMIN_ROLE) {
-        _grantRole(MEMBER_ROLE, _member);
-    }
-
     /*//////////////////////////////////////////////////////////////
                             GETTER FUNCTIONS
     //////////////////////////////////////////////////////////////*/
@@ -178,5 +185,9 @@ contract Contributions is Loans, Ownable, IContributions {
 
     function getMemberContributions(address _address) external view returns (Member memory) {
         return memberData[_address];
+    }
+
+    function getContributions(address _member) external view returns (uint256) {
+        return (memberToAmountContributed[_member]);
     }
 }

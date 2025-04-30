@@ -59,8 +59,8 @@ contract Chama is Ownable {
      * @param _name name of the new chama
      */
 
-    function createChama(address _admin, string memory _name) external returns (address) {
-        Contributions contributions = new Contributions(_admin, address(defaultToken));
+    function createChama(address _admin, string memory _name, uint256 _interestRate) external returns (address) {
+        Contributions contributions = new Contributions(_admin, address(defaultToken), _interestRate);
         // Effects
         chamas[_name] = address(contributions);
         chamaAdmin[_name][address(contributions)] = _admin;
