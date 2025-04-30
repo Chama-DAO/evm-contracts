@@ -5,7 +5,7 @@ pragma solidity 0.8.24;
 interface IContributions {
     struct Member {
         address member;
-        uint256 amount;
+        uint256 availableAmount;
         uint256 timestamp;
     }
 

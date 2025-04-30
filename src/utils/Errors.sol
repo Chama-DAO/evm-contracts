@@ -9,6 +9,7 @@ library Errors {
     error Loans_invalidInterestRate(uint256 maxInterestRate, uint256 currentInterestRate);
     error Loans__contrAmtLessLoanAmt(uint256 contrAmt, uint256 loanAmt);
     error Loans__loanAmtGreaterThanGuaranteedAmt(uint256 loanAmt, uint256 guaranteedAmt);
+    error Loans__repayLoanAmountGreaterThanTotalRepayment(uint256 repaymentAmount, uint256 totalRepaymentAmount);
 
     /*//////////////////////////////////////////////////////////////
                                  CHAMA
@@ -34,4 +35,5 @@ library Errors {
     error Contributions__memberShouldHaveZeroBalance(uint256);
     error Contributions__zeroAddressProvided();
     error Contributions__notFactoryContract();
+    error Contributions__epochNotOver();
 }
