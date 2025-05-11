@@ -15,12 +15,12 @@ contract ChamaTest is Test {
 
     function setUp() external {
         chama = new Chama();
-        contributions = chama.createChama(chamaAdmin, "Chama1");
+        contributions = chama.createChama(chamaAdmin, "Chama1", 10);
     }
 
     function testCreateChama() external {
         vm.prank(chamaAdmin);
-        address _contributions = chama.createChama(chamaAdmin, "Chama1");
+        address _contributions = chama.createChama(chamaAdmin, "Chama1", 10);
 
         console.log("Chama admin is: ", IContributions(_contributions).getAdmin());
 
