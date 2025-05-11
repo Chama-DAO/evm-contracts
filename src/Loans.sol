@@ -24,6 +24,7 @@ contract Loans is ReentrancyGuard, AccessControl {
     mapping(address member => mapping(address guarantor => uint256 amount)) internal loanAmtAvailable;
     mapping(address member => uint256 amount) internal memberToAmountContributed;
     mapping(uint256 loanId => Loan loan) internal loanIdToLoanDet;
+    mapping(address member => uint256 loanId) internal memberToLoanId;
 
     uint256 internal constant BASIS_POINTS = 10000;
     bytes32 internal constant MEMBER_ROLE = keccak256("MEMBER_ROLE");

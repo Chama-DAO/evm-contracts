@@ -11,7 +11,7 @@ interface IContributions {
 
     function addContribution(uint256 _amount) external;
 
-    function claimRound(uint256 amount) external;
+    function claimRound() external;
 
     function getContributions(address member) external view returns (uint256);
 

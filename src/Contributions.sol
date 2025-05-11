@@ -18,14 +18,18 @@ contract Contributions is Loans, Ownable, IContributions {
     address private chamaAdmin;
     uint256 public epochPeriod = 30 days;
     uint256 public epochEndTime;
+    uint256 public currentRound;
     EnumerableSet.AddressSet private members;
 
     mapping(address member => Member) private memberData;
     mapping(address => bool) private allowedTokens;
+    mapping(address => uint256) private memberToRoundClaimed;
 
     event TokenHasBeenWhitelisted(address token);
     event MemberHasContributed(address indexed member, uint256 amount, uint256 indexed timestamp);
     event memberRemovedFromChama(address member);
+    event memberHasNoContributions(address member);
+    event RoundClaimed(address indexed member, uint256 indexed timestamp, uint256 round);
 
     constructor(address _admin, address _token, uint256 _interestRate)
         Ownable(msg.sender)
@@ -36,10 +40,11 @@ contract Contributions is Loans, Ownable, IContributions {
         memberData[_admin] = newMember;
         factoryContract = msg.sender;
         chamaAdmin = _admin;
+        currentRound = 0;
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _setRoleAdmin(MEMBER_ROLE, CHAMA_ADMIN_ROLE);
         _grantRole(CHAMA_ADMIN_ROLE, msg.sender);
-        grantChamaAdminRole(_admin);
+        _grantRole(CHAMA_ADMIN_ROLE, _admin);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -65,26 +70,35 @@ contract Contributions is Loans, Ownable, IContributions {
         emit MemberHasContributed(msg.sender, _amount, block.timestamp);
     }
 
-    function claimRound(uint256 _amount) external nonReentrant onlyRole(MEMBER_ROLE) {
+    /**
+     *
+     * @notice This allow a member to claim the round for all the members in the chama
+     * @notice This should be called after the epoch period has ended
+     * @notice This is a design choice, that we allow one of the members to trigger the claim function for all the members
+     */
+    function claimRound() external nonReentrant onlyRole(MEMBER_ROLE) {
         // Should check whether the member has contributed and also if they are due to claim their round
         // Should also check if the member has any penalties
         // Then allow if all checks pass, allow them to claim their round
         // q should we clear the member's contributions after they claim their round?
-        if (_amount == 0) {
-            revert Errors.Contributions__zeroAmountProvided();
-        }
+
         if (block.timestamp < epochEndTime) {
             revert Errors.Contributions__epochNotOver();
         }
-
-        uint256 totalContributedAmount = memberToAmountContributed[msg.sender];
-        uint256 availableAmt = totalContributedAmount - contrAmtFrozen[msg.sender];
-
-        if (_amount > availableAmt) {
-            revert Errors.Contributions__amountNotAvailable(availableAmt);
+        for (uint256 i = 0; i < members.length(); i++) {
+            address member = members.at(i);
+            uint256 contrAmt = memberToAmountContributed[member];
+            if (contrAmt == 0) {
+                emit memberHasNoContributions(member);
+                continue;
+            }
+            uint256 totalContributedAmount = memberToAmountContributed[member];
+            uint256 availableAmt = totalContributedAmount - contrAmtFrozen[member];
+            token.safeTransfer(msg.sender, availableAmt);
         }
-        totalContributedAmount -= _amount;
-        token.safeTransfer(msg.sender, _amount);
+        epochEndTime = block.timestamp + epochPeriod;
+        emit RoundClaimed(msg.sender, block.timestamp, currentRound);
+        currentRound++;
     }
 
     /**
