@@ -2,46 +2,49 @@
 
 pragma solidity 0.8.24;
 
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import {IContributions} from "./interfaces/IContributions.sol";
 import {Loans} from "./Loans.sol";
 import {Errors} from "./utils/Errors.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-contract Contributions is Loans, Ownable, IContributions, AccessControl {
-    using SafeERC20 for IERC20;
+contract Contributions is Loans, Ownable, IContributions {
     using EnumerableSet for EnumerableSet.AddressSet;
+    using SafeERC20 for IERC20;
 
     address public factoryContract;
     address private chamaAdmin;
-    IERC20 token;
+    uint256 public epochPeriod = 30 days;
+    uint256 public epochEndTime;
+    uint256 public currentRound;
     EnumerableSet.AddressSet private members;
 
-    // Access Control Roles
-    bytes32 private constant MEMBER_ROLE = 0x829b824e2329e205435d941c9f13baf578548505283d29261236d8e6596d4636;
-    bytes32 private constant CHAMA_ADMIN_ROLE = 0xbb46d0af9106a86e3cb61ab45bd36f61bb3b468e4db75bf9d14199a518ba3f9a;
-
-    mapping(address member => uint256 amount) private memberToAmountContributed;
     mapping(address member => Member) private memberData;
     mapping(address => bool) private allowedTokens;
+    mapping(address => uint256) private memberToRoundClaimed;
 
     event TokenHasBeenWhitelisted(address token);
     event MemberHasContributed(address indexed member, uint256 amount, uint256 indexed timestamp);
     event memberRemovedFromChama(address member);
+    event memberHasNoContributions(address member);
+    event RoundClaimed(address indexed member, uint256 indexed timestamp, uint256 round);
 
-    constructor(address _admin, address _token) Ownable(msg.sender) {
+    constructor(address _admin, address _token, uint256 _interestRate)
+        Ownable(msg.sender)
+        Loans(_token, _interestRate)
+    {
         members.add(_admin);
         Member memory newMember = Member(_admin, 0, block.timestamp);
         memberData[_admin] = newMember;
         factoryContract = msg.sender;
         chamaAdmin = _admin;
-        token = IERC20(_token);
+        currentRound = 0;
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _setRoleAdmin(MEMBER_ROLE, CHAMA_ADMIN_ROLE);
         _grantRole(CHAMA_ADMIN_ROLE, msg.sender);
-        grantChamaAdminRole(_admin);
+        _grantRole(CHAMA_ADMIN_ROLE, _admin);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -62,35 +65,51 @@ contract Contributions is Loans, Ownable, IContributions, AccessControl {
 
     function addContribution(uint256 _amount) external override onlyRole(MEMBER_ROLE) {
         memberToAmountContributed[msg.sender] += _amount;
-        IERC20(token).safeTransferFrom(msg.sender, address(this), _amount);
+        token.safeTransferFrom(msg.sender, address(this), _amount);
 
         emit MemberHasContributed(msg.sender, _amount, block.timestamp);
     }
 
-    function claimRound(uint256 _amount) external nonReentrant onlyRole(MEMBER_ROLE) {
+    /**
+     *
+     * @notice This allow a member to claim the round for all the members in the chama
+     * @notice This should be called after the epoch period has ended
+     * @notice This is a design choice, that we allow one of the members to trigger the claim function for all the members
+     */
+    function claimRound() external nonReentrant onlyRole(MEMBER_ROLE) {
         // Should check whether the member has contributed and also if they are due to claim their round
         // Should also check if the member has any penalties
         // Then allow if all checks pass, allow them to claim their round
         // q should we clear the member's contributions after they claim their round?
-        if (_amount == 0) {
-            revert Errors.Contributions__zeroAmountProvided();
+
+        if (block.timestamp < epochEndTime) {
+            revert Errors.Contributions__epochNotOver();
         }
-        uint256 totalContributedAmount = memberToAmountContributed[msg.sender];
-        if (_amount > totalContributedAmount) {
-            revert Errors.Contributions__amountThatCanBeWithdrawnIs(totalContributedAmount);
+        for (uint256 i = 0; i < members.length(); i++) {
+            address member = members.at(i);
+            uint256 contrAmt = memberToAmountContributed[member];
+            if (contrAmt == 0) {
+                emit memberHasNoContributions(member);
+                continue;
+            }
+            uint256 totalContributedAmount = memberToAmountContributed[member];
+            uint256 availableAmt = totalContributedAmount - contrAmtFrozen[member];
+            token.safeTransfer(msg.sender, availableAmt);
         }
-        IERC20(token).safeTransfer(msg.sender, _amount);
+        epochEndTime = block.timestamp + epochPeriod;
+        emit RoundClaimed(msg.sender, block.timestamp, currentRound);
+        currentRound++;
     }
 
     /**
      * @notice Whitelist a token to be used for contributions
      * @notice Contract is meant to handle only USDT for now
      */
-    function getContributions(address _member) external view returns (uint256) {
-        return (memberToAmountContributed[_member]);
-    }
-
     function calculatePenalties(address _member) external returns (uint256) {}
+
+    /*//////////////////////////////////////////////////////////////
+                              ADMIN ROLES
+    //////////////////////////////////////////////////////////////*/
 
     function addMemberToChama(address _address) external onlyRole(CHAMA_ADMIN_ROLE) {
         // Add a member to the chama
@@ -101,7 +120,6 @@ contract Contributions is Loans, Ownable, IContributions, AccessControl {
         members.add(_address);
         Member memory newMember = Member(_address, 0, block.timestamp);
         memberData[_address] = newMember;
-        grantMemberRole(_address);
     }
 
     function changeAdmin(address _newAdmin) external {
@@ -119,6 +137,10 @@ contract Contributions is Loans, Ownable, IContributions, AccessControl {
         }
         token = IERC20(_token);
         emit TokenHasBeenWhitelisted(_token);
+    }
+
+    function setEpochPeriod(uint256 _epochPeriod) external onlyRole(CHAMA_ADMIN_ROLE) {
+        epochPeriod = _epochPeriod;
     }
 
     function removeMemberFromChama(address _member) external onlyRole(CHAMA_ADMIN_ROLE) {
@@ -159,10 +181,6 @@ contract Contributions is Loans, Ownable, IContributions, AccessControl {
         _grantRole(CHAMA_ADMIN_ROLE, _admin);
     }
 
-    function grantMemberRole(address _member) public onlyRole(CHAMA_ADMIN_ROLE) {
-        _grantRole(MEMBER_ROLE, _member);
-    }
-
     /*//////////////////////////////////////////////////////////////
                             GETTER FUNCTIONS
     //////////////////////////////////////////////////////////////*/
@@ -181,5 +199,9 @@ contract Contributions is Loans, Ownable, IContributions, AccessControl {
 
     function getMemberContributions(address _address) external view returns (Member memory) {
         return memberData[_address];
+    }
+
+    function getContributions(address _member) external view returns (uint256) {
+        return (memberToAmountContributed[_member]);
     }
 }

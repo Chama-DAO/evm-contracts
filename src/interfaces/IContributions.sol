@@ -5,13 +5,13 @@ pragma solidity 0.8.24;
 interface IContributions {
     struct Member {
         address member;
-        uint256 amount;
+        uint256 availableAmount;
         uint256 timestamp;
     }
 
     function addContribution(uint256 _amount) external;
 
-    function claimRound(uint256 amount) external;
+    function claimRound() external;
 
     function getContributions(address member) external view returns (uint256);
 
