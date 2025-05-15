@@ -144,5 +144,8 @@ contract StablecoinPoolFactory is AccessControl {
         IAllowanceTransfer(address(permit2)).approve(token, address(posm), type(uint160).max, type(uint48).max);
 
         IPositionManager(posm).multicall(params);
+
+        uint256 ethTosend = currency0.isAddressZero() ? amount0Max : 0;
+        if (ethTosend > 0) IPositionManager(posm).multicall{value: ethTosend}(params);
     }
 }
