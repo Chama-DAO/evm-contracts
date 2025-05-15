@@ -30,11 +30,11 @@ anvil :; anvil -m 'test test test test test test test test test test test junk' 
 NETWORK_ARGS := --rpc-url http://localhost:8545 --private-key $(DEFAULT_ANVIL_KEY) --broadcast
 
 ifeq ($(findstring --network baseSepolia,$(ARGS)),--network baseSepolia)
-	NETWORK_ARGS := --rpc-url $(BASE_SEPOLIA_RPC_URL) --broadcast --account developmentPrivateKey  --verify --etherscan-api-key $(BASESCAN_API_KEY) -vvvvv
+	NETWORK_ARGS := --rpc-url $(BASE_SEPOLIA_RPC_URL) --broadcast --account dev  --verify --etherscan-api-key $(BASESCAN_API_KEY) -vvvvv
 endif
 
-deploy:
-	@forge script script/DeployBox.s.sol:DeployBox $(NETWORK_ARGS)
+deployChamaFactory:
+	@forge script script/DeployChama.s.sol:DeployChama $(NETWORK_ARGS)
 
 upgrade:
 	@forge script script/UpgradeBox.s.sol:UpgradeBox $(NETWORK_ARGS)
