@@ -20,7 +20,7 @@ contract ContributionsTest is Test {
 
     function setUp() external {
         usdt = new Usdt();
-        contributions = new Contributions(admin, address(usdt));
+        contributions = new Contributions(admin, address(usdt), 10);
         usdt.mint(admin, 100);
         usdt.mint(member1, 100);
         usdt.mint(member2, 100);

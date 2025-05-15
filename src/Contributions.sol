@@ -120,6 +120,7 @@ contract Contributions is Loans, Ownable, IContributions {
         members.add(_address);
         Member memory newMember = Member(_address, 0, block.timestamp);
         memberData[_address] = newMember;
+        _grantRole(MEMBER_ROLE, _address);
     }
 
     function changeAdmin(address _newAdmin) external {
