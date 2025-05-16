@@ -14,7 +14,12 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 // For now we are using morpho vaults, which are ERC4626 compliant
 interface ILendingProtocol is IERC4626 {}
 
-import {BaseHook, Hooks, IPoolManager, SwapParams} from "v4-periphery/src/utils/BaseHook.sol";
+import {
+    BaseHook,
+    Hooks,
+    IPoolManager,
+    SwapParams
+} from "@uniswap/universal-router/lib/v4-periphery/src/utils/BaseHook.sol";
 
 contract ChamaYieldHook is BaseHook {
     using SafeERC20 for IERC20;
@@ -38,6 +43,26 @@ contract ChamaYieldHook is BaseHook {
 
     constructor(IPoolManager _poolManager) BaseHook(_poolManager) {}
 
+    function getHookPermissions() public pure override returns (Hooks.Permissions memory) {
+        return Hooks.Permissions({
+            beforeInitialize: false,
+            afterInitialize: false,
+            beforeAddLiquidity: false,
+            afterAddLiquidity: false,
+            beforeRemoveLiquidity: false,
+            afterRemoveLiquidity: false,
+            beforeSwap: true,
+            afterSwap: true,
+            beforeDonate: false,
+            afterDonate: false,
+            beforeSwapReturnDelta: false,
+            afterSwapReturnDelta: false,
+            afterAddLiquidityReturnDelta: false,
+            afterRemoveLiquidityReturnDelta: false
+        });
+    }
+
+    /// @notice The following 2 functions should be overiden but that bringes an error figure out what the hell is the issue
     function _beforeSwap(address, PoolKey calldata key, SwapParams calldata params, bytes calldata)
         internal
         returns (
@@ -55,7 +80,7 @@ contract ChamaYieldHook is BaseHook {
         return (BaseHook.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, 0);
     }
 
-    function _afterSwap(address, PoolKey calldata key, SwapParams calldata, BalanceDelta delta, bytes calldata hookData)
+    function _afterSwap(address, PoolKey calldata key, SwapParams calldata, BalanceDelta, bytes calldata)
         internal
         returns (bytes4, int128)
     {
@@ -111,24 +136,5 @@ contract ChamaYieldHook is BaseHook {
                 }
             }
         }
-    }
-
-    function getHookPermissions() public pure override returns (Hooks.Permissions memory) {
-        return Hooks.Permissions({
-            beforeInitialize: false,
-            afterInitialize: false,
-            beforeAddLiquidity: false,
-            afterAddLiquidity: false,
-            beforeRemoveLiquidity: false,
-            afterRemoveLiquidity: false,
-            beforeSwap: true,
-            afterSwap: true,
-            beforeDonate: false,
-            afterDonate: false,
-            beforeSwapReturnDelta: false,
-            afterSwapReturnDelta: false,
-            afterAddLiquidityReturnDelta: false,
-            afterRemoveLiquidityReturnDelta: false
-        });
     }
 }
