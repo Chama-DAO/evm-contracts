@@ -36,4 +36,11 @@ library Errors {
     error Contributions__zeroAddressProvided();
     error Contributions__notFactoryContract();
     error Contributions__epochNotOver();
+
+    /*//////////////////////////////////////////////////////////////
+                        STABLECOIN POOL FACTORY
+    //////////////////////////////////////////////////////////////*/
+
+    error PoolFactory__PoolAlreadyExists(address pool);
+    error PoolFactory__ArrayLengthMismatch();
 }
