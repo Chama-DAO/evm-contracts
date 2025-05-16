@@ -2,35 +2,26 @@
 
 pragma solidity ^0.8.24;
 
-import {Currency} from "v4-core/src/types/Currency.sol";
-import {PoolKey} from "v4-core/src/types/PoolKey.sol";
 import {PoolId, PoolIdLibrary} from "v4-core/src/types/PoolId.sol";
-import {BalanceDelta} from "v4-core/src/types/BalanceDelta.sol";
-import {BeforeSwapDelta, BeforeSwapDeltaLibrary} from "v4-core/src/types/BeforeSwapDelta.sol";
+import {BeforeSwapDeltaLibrary} from "v4-core/src/types/BeforeSwapDelta.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {ChamaFeeHook} from "./ChamaFeeHook.sol";
+import {IPoolManager, Currency} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
+import {BalanceDelta} from "@uniswap/v4-core/src/types/BalanceDelta.sol";
 
 // For now we are using morpho vaults, which are ERC4626 compliant
 interface ILendingProtocol is IERC4626 {}
 
 import {
-    BaseHook,
-    Hooks,
-    IPoolManager,
-    SwapParams
-} from "@uniswap/universal-router/lib/v4-periphery/src/utils/BaseHook.sol";
+    BaseHook, Hooks, IPoolManager, SwapParams, PoolKey, BeforeSwapDelta
+} from "v4-periphery/src/utils/BaseHook.sol";
 
-contract ChamaYieldHook is BaseHook {
+contract ChamaYieldHook is ChamaFeeHook, BaseHook {
     using SafeERC20 for IERC20;
     using PoolIdLibrary for PoolKey;
-    // NOTE: ---------------------------------------------------------
-    // state variables should typically be unique to a pool
-    // a single hook contract should be able to service multiple pools
-    // ---------------------------------------------------------------
 
-    mapping(PoolId => uint256 count) public beforeSwapCount;
-    mapping(PoolId => uint256 count) public afterSwapCount;
     mapping(address => bool) public approvedYieldProtocols;
     mapping(address => address) public tokenYieldProtocol; //current yield protocols for each token
     // Minimum token balance to keep liquid (not rehypothecated)
@@ -62,32 +53,34 @@ contract ChamaYieldHook is BaseHook {
         });
     }
 
-    /// @notice The following 2 functions should be overiden but that bringes an error figure out what the hell is the issue
     function _beforeSwap(address, PoolKey calldata key, SwapParams calldata params, bytes calldata)
         internal
-        returns (
-            /*override*/
-            bytes4,
-            BeforeSwapDelta,
-            uint24
-        )
+        override
+        returns (bytes4, BeforeSwapDelta, uint24)
     {
         // Before a swap, make sure we have enough liquidity by withdrawing from yield protocol if needed
         address tokenOut = params.zeroForOne ? Currency.unwrap(key.currency1) : Currency.unwrap(key.currency0);
 
         // Ensure enough liquidity for tokenOut
         ensureLiquidity(tokenOut, params.amountSpecified);
-        return (BaseHook.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, 0);
+
+        // Here we update the fee based on whether it is a stablecoin pool
+        poolManager.updateDynamicLPFee(
+            key, uint24(getDynamicFee(Currency.unwrap(key.currency0), Currency.unwrap(key.currency1)))
+        );
+
+        return (BaseHook.beforeSwap.selector, BeforeSwapDelta.wrap(0), uint24(0));
     }
 
+    /// @notice The following function should be overiden but that bringes an error figure out what the hell is the issue
     function _afterSwap(address, PoolKey calldata key, SwapParams calldata, BalanceDelta, bytes calldata)
         internal
+        override
         returns (bytes4, int128)
     {
         address token0 = Currency.unwrap(key.currency0);
         address token1 = Currency.unwrap(key.currency1);
 
-        // Check if we can deploy excess liquidity
         deployExcessLiquidity(token0);
         deployExcessLiquidity(token1);
         return (BaseHook.afterSwap.selector, 0);
