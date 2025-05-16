@@ -5,11 +5,8 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IHooks} from "@uniswap/v4-core/src/interfaces/IHooks.sol";
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
-
 import {Errors} from "../utils/Errors.sol";
 import {IPositionManager} from "v4-periphery/src/interfaces/IPositionManager.sol";
-import {Actions} from "v4-periphery/src/libraries/Actions.sol";
-
 // Swap
 import {UniversalRouter} from "@uniswap/universal-router/contracts/UniversalRouter.sol";
 import {Commands} from "@uniswap/universal-router/contracts/libraries/Commands.sol";
@@ -18,7 +15,6 @@ import {StateLibrary} from "@uniswap/v4-core/src/libraries/StateLibrary.sol";
 import {IV4Router, PoolKey, Currency} from "v4-periphery/src/interfaces/IV4Router.sol";
 import {Actions} from "v4-periphery/src/libraries/Actions.sol";
 import {IPermit2} from "@uniswap/permit2/src/interfaces/IPermit2.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract TreasuryManager is AccessControl {
     using SafeERC20 for IERC20;
@@ -186,36 +182,46 @@ contract TreasuryManager is AccessControl {
         uint256 liquidity,
         address token0,
         address token1,
-        uint256 amount0Max,
-        uint256 amount1Max,
+        uint256 amount0Min,
+        uint256 amount1Min,
         bytes calldata hookData
-    ) external onlyRole(TREASURY_ADMIN_ROLE) returns (uint256 positionId) {
-        IERC20(token0).safeTransferFrom(msg.sender, address(this), amount0Max);
-        IERC20(token1).safeTransferFrom(msg.sender, address(this), amount1Max);
-
-        IERC20(token0).approve(address(posm), amount0Max);
-        IERC20(token1).approve(address(posm), amount1Max);
-
-        bytes memory actions = abi.encodePacked(uint8(Actions.INCREASE_LIQUIDITY), uint8(Actions.SETTLE_PAIR));
+    ) external onlyRole(TREASURY_ADMIN_ROLE) {
+        bytes memory actions = abi.encodePacked(uint8(Actions.DECREASE_LIQUIDITY), uint8(Actions.TAKE_PAIR));
 
         bytes[] memory params = new bytes[](2);
-        params[0] = abi.encode(tokenId, liquidity, amount0Max, amount1Max, hookData);
+        params[0] = abi.encode(tokenId, liquidity, amount0Min, amount1Min, hookData);
         Currency currency0 = Currency.wrap(token0);
         Currency currency1 = Currency.wrap(token1);
-        params[1] = abi.encode(currency0, currency1);
+        params[1] = abi.encode(currency0, currency1, msg.sender);
 
         uint256 deadline = block.timestamp + 60;
 
-        uint256 valueToPass = currency0.isAddressZero() ? amount0Max : 0;
+        uint256 valueToPass = currency0.isAddressZero() ? amount0Min : 0;
 
         posm.modifyLiquidities{value: valueToPass}(abi.encode(actions, params), deadline);
+    }
 
-        emit LiquidityAdded(token0, token1, amount0Max, amount1Max);
-        return 0;
+    /// TODO: Add a way for identifying which tokens were collected
+    function collectPoolFees(uint256 tokenId, bytes memory hookData, address token0, address token1) external {
+        bytes memory actions = abi.encodePacked(uint8(Actions.DECREASE_LIQUIDITY), uint8(Actions.TAKE_PAIR));
+
+        bytes[] memory params = new bytes[](2);
+        /// @dev collecting fees is achieved with liquidity=0, the second parameter
+        params[0] = abi.encode(tokenId, 0, 0, 0, hookData);
+
+        Currency currency0 = Currency.wrap(token0);
+        Currency currency1 = Currency.wrap(token1);
+        params[1] = abi.encode(currency0, currency1, msg.sender);
+
+        uint256 deadline = block.timestamp + 60;
+
+        uint256 valueToPass = currency0.isAddressZero() ? 0 : 0;
+
+        posm.modifyLiquidities{value: valueToPass}(abi.encode(actions, params), deadline);
     }
 
     // Deposit unused assets into yield-generating protocol
-    // Yet to choose the protocol to use
+    // For now we are going to use mopho vaults
     function depositIntoYieldProtocol(address token, uint256 amount, address yieldProtocol)
         external
         onlyRole(TREASURY_ADMIN_ROLE)
