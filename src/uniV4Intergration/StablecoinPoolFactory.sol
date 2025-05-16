@@ -13,6 +13,7 @@ import {IPositionManager} from "v4-periphery/src/interfaces/IPositionManager.sol
 import {Actions} from "v4-periphery/src/libraries/Actions.sol";
 import {IAllowanceTransfer} from "v4-periphery/lib/permit2/src/interfaces/IAllowanceTransfer.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {LPFeeLibrary} from "v4-core/src/libraries/LPFeeLibrary.sol";
 
 contract StablecoinPoolFactory is AccessControl {
     bytes32 public constant POOL_CREATOR_ROLE = keccak256("POOL_CREATOR_ROLE");
@@ -25,7 +26,7 @@ contract StablecoinPoolFactory is AccessControl {
     // Mapping to track created pools
     mapping(address token => bool exists) public createdPools;
 
-    event PoolCreated(address indexed token, uint24 fee, int24 tickSpacing);
+    event PoolCreated(address indexed token, int24 tickSpacing);
 
     constructor(
         IPoolManager _poolManager,
@@ -46,36 +47,33 @@ contract StablecoinPoolFactory is AccessControl {
      *
      * @notice This creates a new USDC pair with optimized parameters for stablecoins
      * @param token This is the other token for the pool
-     * @param lpfee This is the fee for the pool expressed in pips ie 3000 = 0.30%
      * @param tickSpacing is the granularity of the pool. Lower values are more precise but may be more expensive to trade on
      * @param sqrtPriceX96 should be expressed as floor(sqrt(token1 / token0) * 2^96)
      */
-    function createStablecoinPool(address token, uint24 lpfee, int24 tickSpacing, uint160 sqrtPriceX96)
+    function createStablecoinPool(address token, int24 tickSpacing, uint160 sqrtPriceX96)
         external
         onlyRole(POOL_CREATOR_ROLE)
     {
-        _createStablecoinPool(token, lpfee, tickSpacing, sqrtPriceX96);
+        _createStablecoinPool(token, tickSpacing, sqrtPriceX96);
     }
 
     /// See createStablecoinPool for details, only change with this is that we are doing pools for multiple tokens at once
     /// @param initialPrices should be expressed as floor(sqrt(token1 / token0) * 2^96)
     function createMultiplePools(
         address[] calldata tokens,
-        uint24[] calldata lpfees,
         int24[] calldata tickSpacings,
         uint160[] calldata initialPrices
     ) external onlyRole(POOL_CREATOR_ROLE) {
-        if (
-            tokens.length != lpfees.length && lpfees.length != tickSpacings.length
-                && tickSpacings.length != initialPrices.length
-        ) revert Errors.PoolFactory__ArrayLengthMismatch();
+        if (tokens.length != tickSpacings.length && tickSpacings.length != initialPrices.length) {
+            revert Errors.PoolFactory__ArrayLengthMismatch();
+        }
 
         for (uint256 i = 0; i < tokens.length; i++) {
-            _createStablecoinPool(tokens[i], lpfees[i], tickSpacings[i], initialPrices[i]);
+            _createStablecoinPool(tokens[i], tickSpacings[i], initialPrices[i]);
         }
     }
 
-    function _createStablecoinPool(address token, uint24 fee, int24 tickSpacing, uint160 sqrtPriceX96) internal {
+    function _createStablecoinPool(address token, int24 tickSpacing, uint160 sqrtPriceX96) internal {
         if (createdPools[token]) revert Errors.PoolFactory__PoolAlreadyExists(token);
 
         (Currency currency0, Currency currency1) = uint160(usdcToken) < uint160(token)
@@ -85,7 +83,7 @@ contract StablecoinPoolFactory is AccessControl {
         PoolKey memory poolKey = PoolKey({
             currency0: currency0,
             currency1: currency1,
-            fee: fee,
+            fee: LPFeeLibrary.DYNAMIC_FEE_FLAG,
             tickSpacing: tickSpacing,
             hooks: IHooks(address(feeHook))
         });
@@ -94,13 +92,12 @@ contract StablecoinPoolFactory is AccessControl {
 
         createdPools[token] = true;
 
-        emit PoolCreated(token, fee, tickSpacing);
+        emit PoolCreated(token, tickSpacing);
     }
 
     /// @notice startingPrice is the price of the pool at initialization expressed as floor(sqrt(token1 / token0) * 2^96)
     function createPoolAndAddLiquidity(
         address token,
-        uint24 lpfee,
         int24 tickSpacing,
         uint160 startingPrice,
         int24 tickLower,
@@ -121,7 +118,7 @@ contract StablecoinPoolFactory is AccessControl {
         PoolKey memory pool = PoolKey({
             currency0: currency0,
             currency1: currency1,
-            fee: lpfee,
+            fee: LPFeeLibrary.DYNAMIC_FEE_FLAG,
             tickSpacing: tickSpacing,
             hooks: IHooks(address(feeHook))
         });

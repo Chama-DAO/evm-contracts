@@ -33,10 +33,6 @@ contract TreasuryManager is AccessControl {
 
     mapping(address => mapping(address => uint256)) public poolIds;
 
-    // Protocol fees in basis points
-    uint256 public baseFee = 30; // 0.3%
-    uint256 public stablecoinReducedFee = 10; // 0.1% for stablecoin swaps
-
     // Yield strategy settings
     address public currentYieldProtocol;
     bool public autoReinvestYield = true;
@@ -62,21 +58,6 @@ contract TreasuryManager is AccessControl {
 
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
         _grantRole(TREASURY_ADMIN_ROLE, _admin);
-    }
-
-    function getDynamicFee(address token0, address token1) public view returns (uint256) {
-        // If both tokens are stablecoins, apply reduced fee
-        if (isStablecoin(token0) && isStablecoin(token1)) {
-            return stablecoinReducedFee;
-        }
-
-        return baseFee;
-    }
-
-    function isStablecoin(address token) public view returns (bool) {
-        // TODO Add logic to identify stablecoins (USDC, USDT, DAI, etc.)
-        // For now, using a simple check for USDC
-        return token == usdcToken;
     }
 
     function swapTokens(
@@ -231,18 +212,6 @@ contract TreasuryManager is AccessControl {
         currentYieldProtocol = yieldProtocol;
 
         emit YieldDeposited(yieldProtocol, token, amount);
-    }
-
-    // Update fee parameters (only admin)
-    function updateFeeParameters(uint256 _baseFee, uint256 _stablecoinReducedFee)
-        external
-        onlyRole(TREASURY_ADMIN_ROLE)
-    {
-        require(_baseFee <= 100, "Fee too high"); // Max 1%
-        require(_stablecoinReducedFee <= _baseFee, "Reduced fee must be <= base fee");
-
-        baseFee = _baseFee;
-        stablecoinReducedFee = _stablecoinReducedFee;
     }
 
     // Grant CHAMA_ROLE to a Chama contract
