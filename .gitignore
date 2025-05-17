@@ -9,7 +9,7 @@ out/
 
 # Docs
 docs/
-./Notes.md
+Notes.md
 
 # Dotenv file
 .env
