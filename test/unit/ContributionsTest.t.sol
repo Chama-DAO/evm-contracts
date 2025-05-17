@@ -19,6 +19,7 @@ contract ContributionsTest is Test {
     address attacker = makeAddr("attacker");
 
     function setUp() external {
+        vm.startPrank(admin);
         usdc = new Usdc();
         contributions = new Contributions(admin, address(usdc), 10);
         usdc.mint(admin, 100);
@@ -27,7 +28,6 @@ contract ContributionsTest is Test {
         usdc.mint(member3, 100);
         usdc.mint(attacker, 100);
 
-        vm.startPrank(admin);
         contributions.addMemberToChama(member1);
         contributions.addMemberToChama(member2);
         contributions.addMemberToChama(member3);
@@ -119,6 +119,7 @@ contract ContributionsTest is Test {
     function testBurn() external {
         // Not significant since its just test tokens
         vm.prank(member1);
+        vm.expectRevert();
         usdc.burn(member1, 10);
     }
 

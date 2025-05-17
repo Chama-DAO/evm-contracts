@@ -5,9 +5,11 @@ pragma solidity 0.8.24;
 import {Test, console} from "forge-std/Test.sol";
 import {IContributions} from "../../src/interfaces/IContributions.sol";
 import {Chama} from "src/Chama.sol";
+import {Usdc} from "test/mocks/Usdc.sol";
 
 contract ChamaTest is Test {
     Chama chama;
+    Usdc usdc;
 
     address protocolAdmin = makeAddr("protocolAdmin");
     address chamaAdmin = makeAddr("chamaAdmin");
@@ -15,6 +17,7 @@ contract ChamaTest is Test {
 
     function setUp() external {
         chama = new Chama();
+        chama.setDefaultToken(address(usdc = new Usdc()));
         contributions = chama.createChama(chamaAdmin, "Chama1", 10);
     }
 
