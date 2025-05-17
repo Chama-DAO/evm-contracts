@@ -60,6 +60,9 @@ contract Chama is Ownable {
      */
 
     function createChama(address _admin, string memory _name, uint256 _interestRate) external returns (address) {
+        if (address(defaultToken) == address(0)) {
+            revert Errors.Chama__defaultTokenNotSet();
+        }
         Contributions contributions = new Contributions(_admin, address(defaultToken), _interestRate);
         // Effects
         chamas[_name] = address(contributions);
@@ -89,5 +92,9 @@ contract Chama is Ownable {
         if (owner() != msg.sender) {
             revert Errors.Ownable__OwnableUnauthorizedAccount(msg.sender);
         }
+    }
+
+    function setDefaultToken(address _token) external onlyFactoryAdmin {
+        defaultToken = IERC20(_token);
     }
 }
