@@ -38,3 +38,9 @@ deployChamaFactory:
 
 upgrade:
 	@forge script script/UpgradeBox.s.sol:UpgradeBox $(NETWORK_ARGS)
+
+deployTestUsdc:
+	@forge script script/DeployTestUsdc.s.sol:DeployUsdc $(NETWORK_ARGS)
+
+chamaInteractions:
+	@forge script script/interactions/chamaInitialization.s.sol:ChamaInitialization $(NETWORK_ARGS)
