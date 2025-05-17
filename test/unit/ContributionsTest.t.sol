@@ -4,13 +4,13 @@ pragma solidity 0.8.24;
 
 import {Test} from "forge-std/Test.sol";
 import {Contributions} from "src/Contributions.sol";
-import {Usdt} from "test/mocks/Usdt.sol";
+import {Usdc} from "test/mocks/Usdc.sol";
 import {Errors} from "src/utils/Errors.sol";
 import {IAccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 
 contract ContributionsTest is Test {
     Contributions contributions;
-    Usdt usdt;
+    Usdc usdc;
 
     address admin = makeAddr("admin");
     address member1 = makeAddr("member1");
@@ -19,26 +19,26 @@ contract ContributionsTest is Test {
     address attacker = makeAddr("attacker");
 
     function setUp() external {
-        usdt = new Usdt();
-        contributions = new Contributions(admin, address(usdt), 10);
-        usdt.mint(admin, 100);
-        usdt.mint(member1, 100);
-        usdt.mint(member2, 100);
-        usdt.mint(member3, 100);
-        usdt.mint(attacker, 100);
-
         vm.startPrank(admin);
+        usdc = new Usdc();
+        contributions = new Contributions(admin, address(usdc), 10);
+        usdc.mint(admin, 100);
+        usdc.mint(member1, 100);
+        usdc.mint(member2, 100);
+        usdc.mint(member3, 100);
+        usdc.mint(attacker, 100);
+
         contributions.addMemberToChama(member1);
         contributions.addMemberToChama(member2);
         contributions.addMemberToChama(member3);
         vm.stopPrank();
 
         vm.prank(member1);
-        Usdt(usdt).approve(address(contributions), 100);
+        Usdc(usdc).approve(address(contributions), 100);
         vm.prank(member2);
-        Usdt(usdt).approve(address(contributions), 100);
+        Usdc(usdc).approve(address(contributions), 100);
         vm.prank(member3);
-        Usdt(usdt).approve(address(contributions), 100);
+        Usdc(usdc).approve(address(contributions), 100);
     }
 
     function testNonMembersCannotContribute() external {
@@ -59,7 +59,7 @@ contract ContributionsTest is Test {
             contributions.addContribution(10);
         }
         vm.stopPrank();
-        assertEq(usdt.balanceOf(address(contributions)), 30);
+        assertEq(usdc.balanceOf(address(contributions)), 30);
         assertEq(contributions.getContributions(member1), 10);
     }
 
@@ -70,7 +70,7 @@ contract ContributionsTest is Test {
                 IAccessControl.AccessControlUnauthorizedAccount.selector, member1, keccak256("CHAMA_ADMIN_ROLE")
             )
         );
-        contributions.changeContributionToken(address(usdt));
+        contributions.changeContributionToken(address(usdc));
     }
 
     function testTokenCantChangeWithActiveBalance() external {
@@ -79,7 +79,7 @@ contract ContributionsTest is Test {
         vm.stopPrank();
         vm.prank(admin);
         vm.expectRevert(Errors.Contributions__tokenBalanceMustBeZero.selector);
-        contributions.changeContributionToken(address(usdt));
+        contributions.changeContributionToken(address(usdc));
     }
 
     function testChangeContributionTokenZeroAddress() external {
@@ -89,7 +89,7 @@ contract ContributionsTest is Test {
     }
 
     function testCanChangeContributiontoken() external {
-        Usdt otherToken = new Usdt();
+        Usdc otherToken = new Usdc();
         vm.prank(admin);
         contributions.changeContributionToken(address(otherToken));
         assertEq(address(otherToken), address(contributions.getContributionToken()));
@@ -119,7 +119,8 @@ contract ContributionsTest is Test {
     function testBurn() external {
         // Not significant since its just test tokens
         vm.prank(member1);
-        usdt.burn(member1, 10);
+        vm.expectRevert();
+        usdc.burn(member1, 10);
     }
 
     function testChangeAdmin() external {

@@ -17,6 +17,7 @@ library Errors {
     error Chama__onlyFactoryAdminCanCall();
     error chama__zeroAddressProvided();
     error Chama__onlyChamaAdminCanCall();
+    error Chama__defaultTokenNotSet();
 
     /*//////////////////////////////////////////////////////////////
                           OPENZEPPELIN OWNABLE
